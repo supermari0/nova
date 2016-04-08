@@ -31,6 +31,7 @@ from nova import notifications
 from nova import objects
 from nova.objects import base
 from nova.objects import fields
+from nova.objects import notification as notif_base
 from nova import utils
 
 
@@ -1208,3 +1209,86 @@ class InstanceList(base.ObjectListBase, base.NovaObject):
             instance.obj_reset_changes(['fault'])
 
         return faults_by_uuid.keys()
+
+@notif_base.notification_sample('instance-build-fail.json')
+@base.NovaObjectRegistry.register
+class InstanceBuildFailureNotification(notif_base.NotificationBase)
+    # Version 1.0: Initial version
+    VERSION = '1.0'
+
+    fields = {
+        fields.ObjectField('InstanceBuildFailurePayload')
+    }
+
+
+@base.NovaObjectRegistry.register
+class InstanceBuildFailurePayload(notif_base.NotificationPayloadBase):
+    # Version 1.0: Initial version
+    VERSION = '1.0'
+
+    SCHEMA = {
+            # Identity of instance
+            'user_id': ('instance', 'user_id'),
+            'project_id': ('instance', 'project_id'),
+            'display_name': ('instance', 'display_name')
+            'uuid': ('instance', 'uuid')
+
+            # State of instance at time of build failure
+            'power_state': ('instance', 'power_state'),
+            'vm_state': ('instance', 'vm_state'),
+            'task_state': ('instance', 'task_state'),
+
+            # Where the instance was at time of build failure
+            'host': ('instance', 'host'),
+            'node': ('instance', 'host'),
+            'cell_name': ('instance', 'cell_name')
+
+            # When the instance create attempt happened
+            'created_at': ('instance', 'created_at'),
+
+            # Other potentially useful information
+            'fault': ('instance', 'fault'),
+            'flavor': ('instance', 'flavor'),
+            'image_ref': ('instance', 'image_ref'),
+            'os_type': ('instance', 'os_type')
+    }
+
+    fields = {
+        'user_id': fields.StringField(nullable=True),
+        'project_id': fields.StringField(nullable=True),
+        'display_name': fields.StringField(nullable=True),
+        'uuid': fields.UUIDField(),
+
+        'power_state': fields.IntegerField(nullable=True),
+        'vm_state': fields.StringField(nullable=True),
+        'task_state': fields.StringField(nullable=True),
+
+        'host': fields.StringField(nullable=True),
+        'node': fields.StringField(nullable=True),
+        'cell_name': fields.StringField(nullable=True),
+
+        'created_at': fields.DateTimeField(),
+
+        'fault': fields.ObjectField('InstanceFault', nullable=True),
+        'flavor': fields.ObjectField('Flavor'),
+        'image_ref': fields.StringField(nullable=True),
+        'os_type': fields.StringField(nullable=True),
+
+        # Helpful message about why the build failed if one was logged
+        'log_msg': fields.StringField(nullable=True)
+    }
+
+    def __init__(self, instance):
+        super(InstanceBuildFailurePayload, self).__init__()
+        self.populate_schema(instance=instance)
+
+def send_build_failure_notif(context, instance, log_msg):
+    payload = InstanceBuildFailurePayload(instance=instance, log_msg=log_msg)
+    InstanceBuildFailureNotification(
+        #publisher=TODO(mariojv) - define publisher in caller
+        event_type=notif_base.EventType(
+            object='instance',
+            action=fields.NotificationAction.BUILD,
+            phase=fields.NotificationPhase.ERROR),
+        priority=fields.NotificationPriority.ERROR,
+        payload=payload).emit(context)

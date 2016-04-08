@@ -585,8 +585,9 @@ class NotificationPhase(Enum):
 
 class NotificationAction(Enum):
     UPDATE = 'update'
+    BUILD = 'build'
 
-    ALL = (UPDATE,)
+    ALL = (UPDATE,BUILD)
 
     def __init__(self):
         super(NotificationAction, self).__init__(

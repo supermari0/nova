@@ -36,6 +36,7 @@ from nova import manager
 from nova import network
 from nova import objects
 from nova.objects import base as nova_object
+from nova.objects import instance as obj_instance
 from nova import rpc
 from nova.scheduler import client as scheduler_client
 from nova.scheduler import utils as scheduler_utils
@@ -420,6 +421,8 @@ class ComputeTaskManager(base.Base):
                 self._set_vm_state_and_notify(
                     context, instance.uuid, 'build_instances', updates,
                     exc, request_spec)
+                obj_instance.send_build_failure_notif(context, instance,
+                    _("Failed to schedule instance: %s") % exc)
                 self._cleanup_allocated_networks(
                     context, instance, requested_networks)
             return

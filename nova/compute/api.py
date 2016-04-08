@@ -69,6 +69,7 @@ from nova import objects
 from nova.objects import base as obj_base
 from nova.objects import block_device as block_device_obj
 from nova.objects import fields as fields_obj
+from nova.objects import instance as obj_instance
 from nova.objects import keypair as keypair_obj
 from nova.objects import quotas as quotas_obj
 from nova.objects import security_group as security_group_obj
@@ -1176,10 +1177,17 @@ class API(base.Base):
         instance_group = self._get_requested_instance_group(context,
                                    filter_properties, check_server_group_quota)
 
-        instances = self._provision_instances(context, instance_type,
-                min_count, max_count, base_options, boot_meta, security_groups,
-                block_device_mapping, shutdown_terminate,
-                instance_group, check_server_group_quota, filter_properties)
+        try:
+            instances = self._provision_instances(context, instance_type,
+                    min_count, max_count, base_options, boot_meta,
+                    security_groups, block_device_mapping, shutdown_terminate,
+                    instance_group, check_server_group_quota,
+                    filter_properties)
+        except Exception as error:
+            with excutils.save_and_reraise_exception():
+                for instance in instances:
+                    obj_instance.send_build_failure_notif(context, instance,
+                            _("Exception in compute API request: %s") % error)
 
         for instance in instances:
             self._record_action_start(context, instance,

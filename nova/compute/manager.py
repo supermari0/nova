@@ -1893,9 +1893,12 @@ class ComputeManager(manager.Manager):
         except exception.InstanceNotFound:
             msg = 'Instance disappeared before build.'
             LOG.debug(msg, instance=instance)
+            obj_instance.send_build_failure_notif(context, instance, msg)
             return build_results.FAILED
         except exception.UnexpectedTaskStateError as e:
             LOG.debug(e.format_message(), instance=instance)
+            obj_instance.send_build_failure_notif(context, instance,
+                e.format_msg())
             return build_results.FAILED
 
         # b64 decode the files to inject:
@@ -1922,8 +1925,8 @@ class ComputeManager(manager.Manager):
             retry = filter_properties.get('retry')
             if not retry:
                 # no retry information, do not reschedule.
-                LOG.debug("Retry info not present, will not reschedule",
-                    instance=instance)
+                msg = "Retry info not present, will not reschedule"
+                LOG.debug(msg, instance=instance)
                 self._cleanup_allocated_networks(context, instance,
                     requested_networks)
                 compute_utils.add_instance_fault_from_exc(context,
@@ -1932,6 +1935,7 @@ class ComputeManager(manager.Manager):
                 self._nil_out_instance_obj_host_and_node(instance)
                 self._set_instance_obj_error_state(context, instance,
                                                    clean_task_state=True)
+                obj_instance.send_build_failure_notif(context, instance, msg)
                 return build_results.FAILED
             LOG.debug(e.format_message(), instance=instance)
             # This will be used for logging the exception
@@ -1972,6 +1976,7 @@ class ComputeManager(manager.Manager):
             LOG.debug(msg, instance=instance)
             self._cleanup_allocated_networks(context, instance,
                     requested_networks)
+            obj_instance.send_build_failure_notif(context, instance, msg)
             return build_results.FAILED
         except exception.BuildAbortException as e:
             LOG.exception(e.format_message(), instance=instance)
@@ -1984,6 +1989,7 @@ class ComputeManager(manager.Manager):
             self._nil_out_instance_obj_host_and_node(instance)
             self._set_instance_obj_error_state(context, instance,
                                                clean_task_state=True)
+            obj_instance.send_build_failure_notif(context, instance, msg)
             return build_results.FAILED
         except Exception as e:
             # Should not reach here.
@@ -1998,6 +2004,7 @@ class ComputeManager(manager.Manager):
             self._nil_out_instance_obj_host_and_node(instance)
             self._set_instance_obj_error_state(context, instance,
                                                clean_task_state=True)
+            obj_instance.send_build_failure_notif(context, instance, msg)
             return build_results.FAILED
 
     def deallocate_sriov_ports_on_reschedule(self, instance):
@@ -2058,6 +2065,8 @@ class ComputeManager(manager.Manager):
                              instance=instance)
         except (exception.InstanceNotFound,
                 exception.UnexpectedDeletingTaskStateError) as e:
+            # TODO(mariojv) Is this a "build failure"? What's the set of
+            # actions that can lead to this, and is it expected?
             with excutils.save_and_reraise_exception():
                 self._notify_about_instance_usage(context, instance,
                     'create.end', fault=e)
