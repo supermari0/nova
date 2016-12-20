@@ -1563,3 +1563,60 @@ class IronicDriver(virt_driver.ComputeDriver):
                          'node': node.uuid},
                         instance=instance)
             raise exception.ConsoleTypeUnavailable(console_type='serial')
+
+    def rescue(self, context, instance, network_info, image_meta,
+               rescue_password):
+        # TODO(mariojv) Use image_meta to figure out if separate rescue image
+        # was specified. Raise an error indicating that this is not supported
+        # if so.
+        node_uuid = instance.node
+
+        def _wait_for_rescue():
+            try:
+                node = self._validate_instance_and_node(instance)
+            except exception.InstanceNotFound as e:
+                raise exception.InstanceRescueFailure(reason=six.text_type(e))
+
+            if node.provision_state in (ironic_states.RESCUE):
+                raise loopingcall.LoopingCallDone()
+
+            if node.provision_state in (ironic_states.RESCUEFAIL):
+                raise exception.InstanceRescueFailure(
+                          reason='ironic state is rescuefail')
+
+        try:
+            self.ironicclient.call("node.set_provision_state",
+                                   node_uuid, ironic_states.RESCUE,
+                                   rescuepassword=rescue_password)
+        except Exception as e:
+            raise exception.InstanceRescueFailure(reason=six.text_type(e))
+
+        timer = loopingcall.FixedIntervalLoopingCall(_wait_for_rescue)
+        timer.start(interval=CONF.ironic.api_retry_interval).wait()
+
+    def unrescue(self, instance, network_info):
+
+        node_uuid = instance.node
+
+        def _wait_for_unrescue():
+            try:
+                node = self._validate_instance_and_node(instance)
+            except exception.InstanceNotFound as e:
+                raise exception.InstanceUnRescueFailure(
+                          reason=six.text_type(e))
+
+            if node.provision_state in (ironic_states.ACTIVE):
+                raise loopingcall.LoopingCallDone()
+
+            if node.provision_state in (ironic_states.UNRESCUEFAIL):
+                raise exception.InstanceUnRescueFailure(
+                          reason='ironic state is unrescuefail')
+
+        try:
+            self.ironicclient.call("node.set_provision_state",
+                                   node_uuid, ironic_states.UNRESCUE)
+        except Exception as e:
+            raise exception.InstanceUnRescueFailure(reason=six.text_type(e))
+
+        timer = loopingcall.FixedIntervalLoopingCall(_wait_for_unrescue)
+        timer.start(interval=CONF.ironic.api_retry_interval).wait()

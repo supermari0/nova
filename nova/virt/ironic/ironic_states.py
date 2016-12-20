@@ -132,6 +132,22 @@ INSPECTFAIL = 'inspect failed'
 """ Node inspection failed. """
 
 
+RESCUE = 'rescue'
+""" Node is in rescue mode. """
+
+
+RESCUEFAIL = 'rescuefail'
+""" Node rescue failed. """
+
+
+UNRESCUE = 'unrescue'
+""" Node is unrescuing. """
+
+
+UNRESCUEFAIL = 'unrescuefail'
+""" Node rescue failed. """
+
+
 ##############
 # Power states
 ##############

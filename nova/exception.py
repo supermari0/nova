@@ -2148,3 +2148,11 @@ class TraitCannotDeleteStandard(Invalid):
 
 class TraitInUse(Invalid):
     msg_fmt = _("The trait %(name)s is in use by a resource provider.")
+
+
+class InstanceRescueFailure(NovaException):
+    msg_fmt = _("Instance failed to move to rescue mode: %(reason)s")
+
+
+class InstanceUnRescueFailure(NovaException):
+    msg_fmt = _("Instance failed to unrescue: %(reason)s")
