@@ -147,6 +147,9 @@ UNRESCUE = 'unrescue'
 UNRESCUEFAIL = 'unrescuefail'
 """ Node rescue failed. """
 
+RESCUEWAIT = 'rescuewait'
+""" Node is waiting for rescue callback. """
+
 
 ##############
 # Power states

@@ -72,7 +72,9 @@ _POWER_STATE_MAP = {
 
 _UNPROVISION_STATES = (ironic_states.ACTIVE, ironic_states.DEPLOYFAIL,
                        ironic_states.ERROR, ironic_states.DEPLOYWAIT,
-                       ironic_states.DEPLOYING)
+                       ironic_states.DEPLOYING, ironic_states.RESCUE,
+                       ironic_states.RESCUEWAIT, ironic_states.RESCUEFAIL,
+                       ironic_states.UNRESCUEFAIL)
 
 _NODE_FIELDS = ('uuid', 'power_state', 'target_power_state', 'provision_state',
                 'target_provision_state', 'last_error', 'maintenance',
